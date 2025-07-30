@@ -7,6 +7,10 @@ export const schema = {
   inputSchema: {
     type: "object",
     properties: {
+      access_token: {
+        type: "string",
+        description: "The access token for the API",
+      },
       fileId: {
         type: "string",
         description: "ID of the spreadsheet",
@@ -20,15 +24,17 @@ export const schema = {
         description: "New cell value",
       },
     },
-    required: ["fileId", "range", "value"],
+    required: ["access_token", "fileId", "range", "value"],
   },
 } as const;
 
 export async function updateCell(
-  args: GSheetsUpdateCellInput,
+  args: GSheetsUpdateCellInput
 ): Promise<InternalToolResponse> {
   const { fileId, range, value } = args;
-  const sheets = google.sheets({ version: "v4" });
+  let oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({ access_token: args.access_token });
+  const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: fileId,
@@ -49,4 +55,3 @@ export async function updateCell(
     isError: false,
   };
 }
-

@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import 'dotenv/config';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -9,13 +8,11 @@ import {
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { google } from "googleapis";
-import {
-  getValidCredentials,
-  setupTokenRefresh,
-  loadCredentialsQuietly,
-} from "./auth.js";
 import { tools } from "./tools/index.js";
 import { InternalToolResponse } from "./tools/types.js";
+import path from "path";
+import os from "os";
+import fs from "fs";
 
 const drive = google.drive("v3");
 
@@ -33,26 +30,10 @@ const server = new Server(
       },
       tools: {},
     },
-  },
+  }
 );
 
-// Ensure we have valid credentials before making API calls
-async function ensureAuth() {
-  const auth = await getValidCredentials();
-  google.options({ auth });
-  return auth;
-}
-
-async function ensureAuthQuietly() {
-  const auth = await loadCredentialsQuietly();
-  if (auth) {
-    google.options({ auth });
-  }
-  return auth;
-}
-
 server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
-  await ensureAuthQuietly();
   const pageSize = 10;
   const params: any = {
     pageSize,
@@ -76,8 +57,8 @@ server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
   };
 });
 
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  await ensureAuthQuietly();
+// This requires OAuth2 access token to read file contents
+/* server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const fileId = request.params.uri.replace("gdrive:///", "");
   const readFileTool = tools[1]; // gdrive_read_file is the second tool
   const result = await readFileTool.handler({ fileId });
@@ -94,7 +75,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       },
     ],
   };
-});
+}); */
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -115,29 +96,38 @@ function convertToolResponse(response: InternalToolResponse) {
   };
 }
 
+function log(msg: string) {
+  const PROJECT_DIR = path.join(
+    os.homedir(),
+    "Documents",
+    "dev",
+    "recall_ray",
+    "mcp_servers",
+    "mcp-google-drive"
+  );
+  const logPath = path.join(PROJECT_DIR, "server.log");
+  fs.appendFileSync(logPath, msg);
+}
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  await ensureAuth();
+  log(JSON.stringify(request, null, 2));
+
   const tool = tools.find((t) => t.name === request.params.name);
   if (!tool) {
     throw new Error("Tool not found");
   }
 
   const result = await tool.handler(request.params.arguments as any);
+  log(JSON.stringify(result, null, 2));
   return convertToolResponse(result);
 });
 
 async function startServer() {
   try {
     console.error("Starting server");
-    
-    // Add this line to force authentication at startup
-    await ensureAuth(); // This will trigger the auth flow if no valid credentials exist
-    
+
     const transport = new StdioServerTransport();
     await server.connect(transport);
-
-    // Set up periodic token refresh that never prompts for auth
-    setupTokenRefresh();
   } catch (error) {
     console.error("Error starting server:", error);
     process.exit(1);

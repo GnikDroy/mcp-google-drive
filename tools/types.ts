@@ -21,24 +21,27 @@ export interface InternalToolResponse {
 
 // Input types for each tool
 export interface GDriveSearchInput {
+  access_token: string;
   query: string;
   pageToken?: string;
   pageSize?: number;
 }
 
 export interface GDriveReadFileInput {
+  access_token: string;
   fileId: string;
 }
 
 export interface GSheetsUpdateCellInput {
+  access_token: string;
   fileId: string;
   range: string;
   value: string;
 }
 
 export interface GSheetsReadInput {
+  access_token: string;
   spreadsheetId: string;
   ranges?: string[]; // Optional A1 notation ranges like "Sheet1!A1:B10"
   sheetId?: number; // Optional specific sheet ID
 }
-

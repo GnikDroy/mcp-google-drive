@@ -8,6 +8,10 @@ export const schema = {
   inputSchema: {
     type: "object",
     properties: {
+      access_token: {
+        type: "string",
+        description: "The access token for the API",
+      },
       spreadsheetId: {
         type: "string",
         description: "The ID of the spreadsheet to read",
@@ -26,11 +30,9 @@ export const schema = {
           "Optional specific sheet ID to read. If not provided with ranges, reads first sheet.",
       },
     },
-    required: ["spreadsheetId"],
+    required: ["access_token", "spreadsheetId"],
   },
 } as const;
-
-const sheets = google.sheets("v4");
 
 interface CellData {
   value: any;
@@ -76,7 +78,7 @@ async function processSheetData(response: any): Promise<ProcessedSheetData[]> {
       row.map((cell: any, colIndex: number) => ({
         value: cell,
         location: `${sheetName}!${getA1Notation(rowIndex, colIndex + 1)}`,
-      })),
+      }))
     );
 
     // Process headers with locations
@@ -96,9 +98,13 @@ async function processSheetData(response: any): Promise<ProcessedSheetData[]> {
 }
 
 export async function readSheet(
-  args: GSheetsReadInput,
+  args: GSheetsReadInput
 ): Promise<InternalToolResponse> {
   try {
+    let oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: args.access_token });
+    const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
     let response;
 
     if (args.ranges) {
@@ -115,7 +121,7 @@ export async function readSheet(
       });
 
       const sheet = metadata.data.sheets?.find(
-        (s) => s.properties?.sheetId === args.sheetId,
+        (s) => s.properties?.sheetId === args.sheetId
       );
 
       if (!sheet?.properties?.title) {

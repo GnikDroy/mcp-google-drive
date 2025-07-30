@@ -7,16 +7,18 @@ export const schema = {
   inputSchema: {
     type: "object",
     properties: {
+      access_token: {
+        type: "string",
+        description: "The access token for the API",
+      },
       fileId: {
         type: "string",
         description: "ID of the file to read",
       },
     },
-    required: ["fileId"],
+    required: ["access_token", "fileId"],
   },
 } as const;
-
-const drive = google.drive("v3");
 
 interface FileContent {
   uri?: string;
@@ -26,14 +28,16 @@ interface FileContent {
 }
 
 export async function readFile(
-  args: GDriveReadFileInput,
+  args: GDriveReadFileInput
 ): Promise<InternalToolResponse> {
-  const result = await readGoogleDriveFile(args.fileId);
+  const result = await readGoogleDriveFile(args.fileId, args.access_token);
   return {
     content: [
       {
         type: "text",
-        text: `Contents of ${result.name}:\n\n${result.contents.text || result.contents.blob}`,
+        text: `Contents of ${result.name}:\n\n${
+          result.contents.text || result.contents.blob
+        }`,
       },
     ],
     isError: false,
@@ -42,8 +46,13 @@ export async function readFile(
 
 async function readGoogleDriveFile(
   fileId: string,
+  access_token: string
 ): Promise<{ name: string; contents: FileContent }> {
   // First get file metadata to check mime type
+  let oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({ access_token });
+  const drive = google.drive({ version: "v3", auth: oauth2Client });
+
   const file = await drive.files.get({
     fileId,
     fields: "mimeType,name",
@@ -71,7 +80,7 @@ async function readGoogleDriveFile(
 
     const res = await drive.files.export(
       { fileId, mimeType: exportMimeType },
-      { responseType: "text" },
+      { responseType: "text" }
     );
 
     return {
@@ -86,7 +95,7 @@ async function readGoogleDriveFile(
   // For regular files download content
   const res = await drive.files.get(
     { fileId, alt: "media" },
-    { responseType: "arraybuffer" },
+    { responseType: "arraybuffer" }
   );
   const mimeType = file.data.mimeType || "application/octet-stream";
   const isText =
@@ -103,4 +112,3 @@ async function readGoogleDriveFile(
     },
   };
 }
-

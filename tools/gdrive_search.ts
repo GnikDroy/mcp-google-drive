@@ -7,9 +7,14 @@ export const schema = {
   inputSchema: {
     type: "object",
     properties: {
+      access_token: {
+        type: "string",
+        description: "The access token for the API",
+      },
       query: {
         type: "string",
-        description: "Search query",
+        description:
+          "Search query. This uses the exact same syntax as the Google Drive search bar.",
       },
       pageToken: {
         type: "string",
@@ -22,14 +27,17 @@ export const schema = {
         optional: true,
       },
     },
-    required: ["query"],
+    required: ["access_token", "query"],
   },
 } as const;
 
 export async function search(
-  args: GDriveSearchInput,
+  args: GDriveSearchInput
 ): Promise<InternalToolResponse> {
-  const drive = google.drive("v3");
+  let oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({ access_token: args.access_token });
+  const drive = google.drive({ version: "v3", auth: oauth2Client });
+
   const userQuery = args.query.trim();
   let searchQuery = "";
 
