@@ -13,6 +13,7 @@ import { InternalToolResponse } from "./tools/types.js";
 import path from "path";
 import os from "os";
 import fs from "fs";
+import { fileURLToPath } from "url";
 
 const drive = google.drive("v3");
 
@@ -97,10 +98,8 @@ function convertToolResponse(response: InternalToolResponse) {
 }
 
 function log(msg: string) {
-  const logPath = path.join(
-    path.dirname(new URL(import.meta.url).pathname),
-    "server.log"
-  );
+  const dir = path.dirname(fileURLToPath(import.meta.url));
+  const logPath = path.resolve(dir, "server.log");
   fs.appendFileSync(logPath, msg);
 }
 
