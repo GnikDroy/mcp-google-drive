@@ -97,15 +97,10 @@ function convertToolResponse(response: InternalToolResponse) {
 }
 
 function log(msg: string) {
-  const PROJECT_DIR = path.join(
-    os.homedir(),
-    "Documents",
-    "dev",
-    "recall_ray",
-    "mcp_servers",
-    "mcp-google-drive"
+  const logPath = path.join(
+    path.dirname(new URL(import.meta.url).pathname),
+    "server.log"
   );
-  const logPath = path.join(PROJECT_DIR, "server.log");
   fs.appendFileSync(logPath, msg);
 }
 
